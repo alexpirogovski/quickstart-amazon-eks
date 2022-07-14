@@ -226,6 +226,8 @@ Resources:
     Type: AWS::CloudFormation::Stack
     Metadata: { cfn-lint: { config: { ignore_checks: [E9902, W9901] } } }
     Properties:
+      Tags:
+        - iguazio.systemid: marketplace-iguazio
       TemplateURL: !Sub
         - 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/amazon-eks-advanced-configuration.template.yaml'
         - QSS3BucketName: !FindInMap [ Config, QSS3BucketName, Value ]
@@ -262,6 +264,8 @@ Resources:
         EKSClusterName: !Ref EKSClusterName
         NodeInstanceFamily: !Ref NodeInstanceFamily
         NodeGroupType: !FindInMap [ Config, NodeGroupType, Value ]
+        ClusterAutoScaler: Enabled
+        CalicoIntegration: Enabled
   NvidiaDevicePlugin:
     Type: AWS::CloudFormation::Stack
     Condition: DeployNvidiaPlugin
