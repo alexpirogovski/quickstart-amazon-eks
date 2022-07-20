@@ -55,6 +55,8 @@ Parameters:
     Type: String
   OIDCProvider:
     Type: String
+  MLrunKitVersion:
+    Type: String
 
 Mappings:
   Config:
@@ -68,8 +70,10 @@ Resources:
       BucketName: !Sub mlrun-${EKSClusterName}
       AccessControl: BucketOwnerFullControl
       PublicAccessBlockConfiguration:
+        BlockPublicAcls: yes
+        BlockPublicPolicy: yes
+        IgnorePublicAcls: yes
         RestrictPublicBuckets: yes
-
 
   CAARecordSet:
     Type: "AWS::Route53::RecordSet"
@@ -183,7 +187,7 @@ Resources:
         apiVersion: v1
         kind: ServiceAccount
         metadata:
-          name: mlrun-sa
+          name: mlrun-jobs-sa
           namespace: mlrun
           annotations:
             eks.amazonaws.com/role-arn: ${RegisterUsageRole.Arn}
@@ -223,6 +227,7 @@ Resources:
       Name: mlrun-kit
       Chart: mlrun-kit
       Namespace: mlrun
+      Version: !Ref MLrunKitVersion
       Repository: https://v3io.github.io/helm-charts/stable
       ValueYaml: !Sub |
         global:
@@ -233,20 +238,18 @@ Resources:
           dashboard:
             containerBuilderKind: kaniko
         mlrun:
-          serviceAccounts:
-            api:
-              create: false
-              name: mlrun-sa
           api:
             extraEnv:
             - name: MLRUN_SPARK_APP_IMAGE
               value: gcr.io/iguazio/spark-app
             - name: MLRUN_SPARK_APP_IMAGE_TAG
               value: v3.2.1-mlk
+            - name: MLRUN_HTTPDB__DEFAULT_SERVICE_ACCOUNT
+              value: mlrun-jobs-sa
             extraInitContainers:
             - name: secret-converter
               image: gcr.io/iguazio/secret-converter:0.0.1
-              imagePullPolicy: Always
+              imagePullPolicy: IfNotPresent
           nuclio:
             uiURL: "https://nuclio.${EKSClusterName}.${ClusterDomain}"
 

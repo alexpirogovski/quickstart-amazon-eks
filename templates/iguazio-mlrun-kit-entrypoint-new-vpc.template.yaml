@@ -100,6 +100,7 @@ Metadata:
           default: Debugging options
         Parameters:
           - DeployMLRunKit
+          - MLrunKitVersion
     ParameterLabels:
       AvailabilityZones:
         default: Availability Zones
@@ -141,6 +142,8 @@ Metadata:
         default: Container registry user's email address
       DeployMLRunKit:
         default: Deploy MLRun Kit
+      MLrunKitVersion:
+        default: MLRun Kit version
 Parameters:
   AvailabilityZones:
     Description: List of Availability Zones to use for the subnets in the VPC. The number of selected entries should match the value entered for Number of Availability Zones parameter.
@@ -219,6 +222,9 @@ Parameters:
     Default: yes
     Type: String
     AllowedValues: [yes, no]
+  MLrunKitVersion:
+    Type: String
+    Default: ""
 Mappings:
   Config:
     QSS3KeyPrefix: { Value: quickstart-amazon-eks/ }
