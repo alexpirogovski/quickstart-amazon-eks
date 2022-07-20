@@ -96,6 +96,10 @@ Metadata:
           - RegistryUsername
           - RegistryPassword
           - RegistryEmail
+      - Label:
+          default: Debugging options
+        Parameters:
+          - DeployMLRunKit
     ParameterLabels:
       AvailabilityZones:
         default: Availability Zones
@@ -135,6 +139,8 @@ Metadata:
         default: Container registry password
       RegistryEmail:
         default: Container registry user's email address
+      DeployMLRunKit:
+        default: Deploy MLRun Kit
 Parameters:
   AvailabilityZones:
     Description: List of Availability Zones to use for the subnets in the VPC. The number of selected entries should match the value entered for Number of Availability Zones parameter.
@@ -208,6 +214,11 @@ Parameters:
   RegistryEmail:
     MinLength: 1
     Type: String
+  DeployMLRunKit:
+    Description: Deploy MLRun Kit
+    Default: yes
+    Type: String
+    AllowedValues: [yes, no]
 Mappings:
   Config:
     QSS3KeyPrefix: { Value: quickstart-amazon-eks/ }
@@ -221,13 +232,14 @@ Conditions:
   DeployNvidiaPlugin: !Equals 
     - !Ref NodeInstanceFamily
     - GPU
+  DeployMLRunStack: !Equals
+    - !Ref DeployMLRunKit
+    - yes
 Resources:
   AdvancedConfigDefaultsStack:
     Type: AWS::CloudFormation::Stack
     Metadata: { cfn-lint: { config: { ignore_checks: [E9902, W9901] } } }
     Properties:
-      Tags:
-        - iguazio.systemid: marketplace-iguazio
       TemplateURL: !Sub
         - 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/amazon-eks-advanced-configuration.template.yaml'
         - QSS3BucketName: !FindInMap [ Config, QSS3BucketName, Value ]
@@ -280,6 +292,7 @@ Resources:
         EKSClusterName: !Ref EKSClusterName
   MLRunKit:
     Type: AWS::CloudFormation::Stack
+    Condition: DeployMLRunStack
     DependsOn: EKSNewVPC
     Properties:
       TemplateURL: !Sub

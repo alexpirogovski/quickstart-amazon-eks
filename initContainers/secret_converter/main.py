@@ -14,8 +14,19 @@ def main():
     user_registry = ''
 
     # Read the secret
+    base64_data = ''
     secret = v1.read_namespaced_secret(secret_name, namespace)
-    base64_data = secret.data['.dockercfg']
+    try:
+        base64_data = secret.data['.dockercfg']
+    except KeyError:
+        try:
+            base64_data = secret.data['.dockerconfigjson']
+            print('Secret is already in required format - nothing to do.')
+            exit(0)
+        except KeyError:
+            print('Required keys not found in secret - secret is invalid.')
+            exit(0)
+
     base64_bytes = base64_data.encode('ascii')
     message_bytes = base64.b64decode(base64_bytes)
     message = message_bytes.decode('ascii')

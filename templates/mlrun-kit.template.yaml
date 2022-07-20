@@ -55,10 +55,22 @@ Parameters:
     Type: String
   OIDCProvider:
     Type: String
+
 Mappings:
   Config:
     Prefix: { Value: 'eks-quickstart' }
+
 Resources:
+  MlrunBucket:
+    Type: 'AWS::S3::Bucket'
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub mlrun-${EKSClusterName}
+      AccessControl: BucketOwnerFullControl
+      PublicAccessBlockConfiguration:
+        RestrictPublicBuckets: yes
+
+
   CAARecordSet:
     Type: "AWS::Route53::RecordSet"
     DeletionPolicy: Retain
@@ -70,6 +82,7 @@ Resources:
       TTL: "300"
       ResourceRecords:
         - "0 issue \"amazon.com\""
+
   HostedZoneId:
     Type: Custom::CliQuery
     Properties:
@@ -79,6 +92,7 @@ Resources:
         route53 list-hosted-zones-by-name --query "HostedZones[?Name=='${ClusterDomain}.'] | [0]"
       - ClusterDomain: !Ref ClusterDomain
       IdField: 'Id'
+
   ACMCertificate:
     Type: AWS::CertificateManager::Certificate
     DependsOn:
@@ -90,6 +104,7 @@ Resources:
       DomainValidationOptions:
         - DomainName: !Sub "*.${EKSClusterName}.${ClusterDomain}"
           HostedZoneId: !Select [2, !Split [ "/", !Ref HostedZoneId ]]
+
   MLRunNamespace:
     Type: "AWSQS::Kubernetes::Resource"
     DeletionPolicy: Retain
@@ -105,10 +120,11 @@ Resources:
         spec:
           finalizers:
           - kubernetes
+
   RegisterUsageRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub ${EKSClusterName}-mp-metering
+      RoleName: !Sub ${EKSClusterName}-mlrun
       AssumeRolePolicyDocument: !Sub |
         {
           "Statement": [
@@ -119,7 +135,7 @@ Resources:
               "Condition": {
                 "StringEquals": {
                   "${OIDCProvider}:aud": "sts.amazonaws.com",
-                  "${OIDCProvider}:sub": "system:serviceaccount:mlrun:mp-metering-sa"
+                  "${OIDCProvider}:sub": "system:serviceaccount:mlrun:mlrun-sa"
                 }
               },
               "Effect": "Allow",
@@ -132,6 +148,31 @@ Resources:
         }
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/AWSMarketplaceMeteringRegisterUsage
+
+  MlrunS3Policy:
+    Type: 'AWS::IAM::Policy'
+    DependsOn:
+      - RegisterUsageRole
+    Properties:
+      PolicyName: AccessS3Bucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          Action: "s3:*"
+          Effect: "Allow"
+          Resource:
+            - !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref MlrunBucket
+                - '/*'
+            - !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref MlrunBucket
+      Roles:
+        - !Ref RegisterUsageRole
+
   MarketplaceMeteringSA:
     Type: "AWSQS::Kubernetes::Resource"
     DependsOn: MLRunNamespace
@@ -142,10 +183,11 @@ Resources:
         apiVersion: v1
         kind: ServiceAccount
         metadata:
-          name: mp-metering-sa
+          name: mlrun-sa
           namespace: mlrun
           annotations:
             eks.amazonaws.com/role-arn: ${RegisterUsageRole.Arn}
+
   ContainerRegistrySecret:
     Type: "AWSQS::Kubernetes::Resource"
     DependsOn: MLRunNamespace
@@ -170,6 +212,7 @@ Resources:
           namespace: mlrun
           selfLink: /api/v1/namespaces/mlrun/secrets/registry-credentials
         type: kubernetes.io/dockercfg
+
   MLRunHelmChart:
     Type: "AWSQS::Kubernetes::Helm"
     DependsOn: 
@@ -193,8 +236,13 @@ Resources:
           serviceAccounts:
             api:
               create: false
-              name: mp-metering-sa
+              name: mlrun-sa
           api:
+            extraEnv:
+            - name: MLRUN_SPARK_APP_IMAGE
+              value: gcr.io/iguazio/spark-app
+            - name: MLRUN_SPARK_APP_IMAGE_TAG
+              value: v3.2.1-mlk
             extraInitContainers:
             - name: secret-converter
               image: gcr.io/iguazio/secret-converter:0.0.1
@@ -252,6 +300,7 @@ Resources:
                   serviceName: mlrun-kit-jupyter
                   servicePort: 8888
                 path: /*
+
   MLRunIngressHostname:
     Type: "AWSQS::Kubernetes::Get"
     DependsOn: MLRunIngress
@@ -260,6 +309,7 @@ Resources:
       Namespace: mlrun
       Name: ingress/mlrun-ingress
       JsonPath: "{.status.loadBalancer.ingress[0].hostname}"
+
   ALBRecordSet:
     Type: AWS::Route53::RecordSet
     DependsOn: 
@@ -272,6 +322,7 @@ Resources:
       TTL: "300"
       ResourceRecords:
         - !GetAtt MLRunIngressHostname.Response
+
 Outputs:
   MLRunUI:
     Value: !Sub https://mlrun.${EKSClusterName}.${ClusterDomain}
