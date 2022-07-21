@@ -314,6 +314,7 @@ Resources:
         RegistryUsername: !Ref RegistryUsername
         RegistryPassword: !Ref RegistryPassword
         RegistryEmail: !Ref RegistryEmail
+        MLrunKitVersion: !Ref MLrunKitVersion
         OIDCProvider: !Join [ '', !Split [ 'https://', !GetAtt EKSNewVPC.Outputs.OIDCIssuerURL ] ]
 Outputs:
   BastionIP:
