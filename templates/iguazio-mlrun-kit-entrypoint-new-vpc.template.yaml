@@ -321,11 +321,19 @@ Outputs:
     Value: !GetAtt EKSNewVPC.Outputs.BastionIP
   EKSClusterName:
     Value: !GetAtt EKSNewVPC.Outputs.EKSClusterName
+  KubeConfig:
+    Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}
   JupyterNotebook:
     Value: !GetAtt MLRunKit.Outputs.JupyterNotebook
+    Condition: DeployMLRunStack
   MLRunUI:
     Value: !GetAtt MLRunKit.Outputs.MLRunUI
+    Condition: DeployMLRunStack
   MLRunAPI:
     Value: !GetAtt MLRunKit.Outputs.MLRunAPI
+    Condition: DeployMLRunStack
   Nuclio:
     Value: !GetAtt MLRunKit.Outputs.Nuclio
+    Condition: DeployMLRunStack
+
+
