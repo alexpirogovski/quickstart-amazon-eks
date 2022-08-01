@@ -246,6 +246,8 @@ Resources:
               value: v3.2.1-mlk
             - name: MLRUN_FUNCTION__SPEC__SERVICE_ACCOUNT__DEFAULT
               value: mlrun-jobs-sa
+            - name: S3_NON_ANONYMOUS
+              value: true
             extraInitContainers:
             - name: secret-converter
               image: gcr.io/iguazio/secret-converter:0.0.1
