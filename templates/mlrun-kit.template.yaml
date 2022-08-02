@@ -264,7 +264,7 @@ Resources:
       ClusterName: !Ref EKSClusterName
       Namespace: mlrun
       Manifest: !Sub |
-        apiVersion: networking.k8s.io/v1beta1
+        apiVersion: networking.k8s.io/v1
         kind: Ingress
         metadata:
           namespace: mlrun
@@ -281,30 +281,42 @@ Resources:
             http:
               paths:
               - backend:
-                  serviceName: mlrun-ui
-                  servicePort: 80
+                  service:
+                    name: mlrun-ui
+                    port:
+                      number: 80
                 path: /*
+                pathType: ImplementationSpecific
           - host: mlrun-api.${EKSClusterName}.${ClusterDomain}
             http:
               paths:
               - backend:
-                  serviceName: mlrun-api
-                  servicePort: 8080
+                  service:
+                    name: mlrun-api
+                    port:
+                      number: 8080
                 path: /*
+                pathType: ImplementationSpecific
           - host: nuclio.${EKSClusterName}.${ClusterDomain}
             http:
               paths:
               - backend:
-                  serviceName: nuclio-dashboard
-                  servicePort: 8070
+                  service:
+                    name: nuclio-dashboard
+                    port:
+                      number: 8070
                 path: /*
+                pathType: ImplementationSpecific
           - host: jupyter.${EKSClusterName}.${ClusterDomain}
             http:
               paths:
               - backend:
-                  serviceName: mlrun-jupyter
-                  servicePort: 8888
+                  service:
+                    name: mlrun-jupyter
+                    port:
+                      number: 8888
                 path: /*
+                pathType: ImplementationSpecific
 
   MLRunIngressHostname:
     Type: "AWSQS::Kubernetes::Get"
