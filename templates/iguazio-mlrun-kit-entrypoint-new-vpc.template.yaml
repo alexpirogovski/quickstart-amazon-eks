@@ -232,8 +232,8 @@ Mappings:
     EKSPublicAccessEndpoint: { Value: Enabled }
     ALBIngressController: { Value: Enabled }
     NodeGroupType: { Value: Managed }
-    KubernetesVersion: { Value: 1.21 }
-    QSS3BucketName: { Value: mlrun-kit-alexp }
+    KubernetesVersion: { Value: 1.22 }
+    QSS3BucketName: { Value: mlk-alexp-122 }
 Conditions:
   DeployNvidiaPlugin: !Equals 
     - !Ref NodeInstanceFamily
@@ -283,7 +283,6 @@ Resources:
         NodeInstanceFamily: !Ref NodeInstanceFamily
         NodeGroupType: !FindInMap [ Config, NodeGroupType, Value ]
         ClusterAutoScaler: Enabled
-        CalicoIntegration: Enabled
   NvidiaDevicePlugin:
     Type: AWS::CloudFormation::Stack
     Condition: DeployNvidiaPlugin
@@ -320,8 +319,10 @@ Outputs:
   BastionIP:
     Value: !GetAtt EKSNewVPC.Outputs.BastionIP
   EKSClusterName:
+    Description: "This is the name of your EKS cluster"
     Value: !GetAtt EKSNewVPC.Outputs.EKSClusterName
   KubeConfig:
+    Description: "Run this command in your terminal to get access to your EKS cluster"
     Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}
   JupyterNotebook:
     Value: !GetAtt MLRunKit.Outputs.JupyterNotebook
