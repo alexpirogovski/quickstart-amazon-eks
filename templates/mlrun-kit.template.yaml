@@ -350,5 +350,5 @@ Outputs:
   JupyterNotebook:
     Value: !Sub https://jupyter.${EKSClusterName}.${ClusterDomain}
   KubeConfig:
-    Descriptiomn: Run this command in your terminal to get access to your EKS cluster
+    Description: Run this command in your terminal to get access to your EKS cluster
     Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}
