@@ -125,7 +125,7 @@ Resources:
           finalizers:
           - kubernetes
 
-  RegisterUsageRole:
+  AWSAccessRole:
     Type: AWS::IAM::Role
     Properties:
       RoleName: !Sub ${EKSClusterName}-mlrun
@@ -139,7 +139,12 @@ Resources:
               "Condition": {
                 "StringEquals": {
                   "${OIDCProvider}:aud": "sts.amazonaws.com",
-                  "${OIDCProvider}:sub": "system:serviceaccount:mlrun:mlrun-jobs-sa"
+                  "${OIDCProvider}:sub": [
+                            "system:serviceaccount:mlrun:mlrun-jobs-sa",
+                            "system:serviceaccount:mlrun:ml-pipeline-ui",
+                            "system:serviceaccount:mlrun:ml-pipeline",
+                            "system:serviceaccount:mlrun:argo"
+                  ]
                 }
               },
               "Effect": "Allow",
@@ -156,7 +161,7 @@ Resources:
   MlrunS3Policy:
     Type: 'AWS::IAM::Policy'
     DependsOn:
-      - RegisterUsageRole
+      - AWSAccessRole
     Properties:
       PolicyName: AccessS3Bucket
       PolicyDocument:
@@ -175,9 +180,9 @@ Resources:
               - - 'arn:aws:s3:::'
                 - !Ref MlrunBucket
       Roles:
-        - !Ref RegisterUsageRole
+        - !Ref AWSAccessRole
 
-  MarketplaceMeteringSA:
+  MLRunJobsSA:
     Type: "AWSQS::Kubernetes::Resource"
     DependsOn: MLRunNamespace
     Properties:
@@ -190,7 +195,52 @@ Resources:
           name: mlrun-jobs-sa
           namespace: mlrun
           annotations:
-            eks.amazonaws.com/role-arn: ${RegisterUsageRole.Arn}
+            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
+
+  MLPipelineUISA:
+    Type: "AWSQS::Kubernetes::Resource"
+    DependsOn: MLRunNamespace
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      Namespace: mlrun
+      Manifest: !Sub |
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: ml-pipeline-ui
+          namespace: mlrun
+          annotations:
+            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
+
+  MLPipelineSA:
+    Type: "AWSQS::Kubernetes::Resource"
+    DependsOn: MLRunNamespace
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      Namespace: mlrun
+      Manifest: !Sub |
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: ml-pipeline
+          namespace: mlrun
+          annotations:
+            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
+
+  ArgoSA:
+    Type: "AWSQS::Kubernetes::Resource"
+    DependsOn: MLRunNamespace
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      Namespace: mlrun
+      Manifest: !Sub |
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: argo
+          namespace: mlrun
+          annotations:
+            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
 
   ContainerRegistrySecret:
     Type: "AWSQS::Kubernetes::Resource"
