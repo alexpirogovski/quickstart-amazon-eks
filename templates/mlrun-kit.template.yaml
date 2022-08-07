@@ -298,6 +298,8 @@ Resources:
               value: mlrun-jobs-sa
             - name: S3_NON_ANONYMOUS
               value: "true"
+            - name: MLRUN_ARTIFACT_PATH
+              value: s3://${EKSClusterName}
             extraInitContainers:
             - name: secret-converter
               image: gcr.io/iguazio/secret-converter:0.0.1
