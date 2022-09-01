@@ -8,29 +8,13 @@ Metadata:
         Parameters:
           - EKSClusterName
           - ClusterDomain
-      - Label:
-          default: Docker registry credentials
-        Parameters:
-          - RegistryDomainName
-          - RegistrySuffix
-          - RegistryUsername
-          - RegistryPassword
-          - RegistryEmail
+
     ParameterLabels:
       EKSClusterName:
         default: EKS Cluster to deploy MLRun Kit
       ClusterDomain:
         default: DNS Domain
-      RegistryDomainName:
-        default: Container registry URL
-      RegistrySuffix:
-        default: Container registry suffix
-      RegistryUsername:
-        default: Container registry username
-      RegistryPassword:
-        default: Container registry password
-      RegistryEmail:
-        default: Container registry user's email address
+
 Parameters:
   EKSClusterName:
     Type: String
@@ -38,24 +22,10 @@ Parameters:
     Description: Cluster DNS name will be created in this domain
     Default: iguazio-devinteg.com
     Type: String
-  RegistryDomainName:
-    Description: Registry for Nuclio container images
-    Default: index.docker.io
-    Type: String
-  RegistrySuffix:
-    Type: String
-    Description: Container registry suffix, for example /v1/
-    Default: /v1/
-  RegistryUsername:
-    Type: String
-  RegistryPassword:
-    Type: String
-    NoEcho: true
-  RegistryEmail:
-    Type: String
+
   OIDCProvider:
     Type: String
-  MLrunKitVersion:
+  MLrunCeVersion:
     Type: String
 
 Mappings:
@@ -182,6 +152,33 @@ Resources:
       Roles:
         - !Ref AWSAccessRole
 
+  MlrunECRPolicy:
+    Type: 'AWS::IAM::Policy'
+    DependsOn:
+      - AWSAccessRole
+    Properties:
+      PolicyName: AccessECR
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action:
+              - 'cloudformation:Describe*'
+              - 'cloudformation:List*'
+              - 'cloudformation:Get*'
+              - 'ecr:CreateRepository'
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchCheckLayerAvailability'
+              - 'ecr:BatchGetImage'
+              - 'ecr:CompleteLayerUpload'
+              - 'ecr:GetDownloadUrlForLayer'
+              - 'ecr:InitiateLayerUpload'
+              - 'ecr:PutImage'
+              - 'ecr:UploadLayerPart'
+            Resource: '*'
+      Roles:
+        - !Ref AWSAccessRole
+
   MLRunJobsSA:
     Type: "AWSQS::Kubernetes::Resource"
     DependsOn: MLRunNamespace
@@ -197,115 +194,196 @@ Resources:
           annotations:
             eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
 
-  MLPipelineUISA:
-    Type: "AWSQS::Kubernetes::Resource"
-    DependsOn: MLRunNamespace
-    Properties:
-      ClusterName: !Ref EKSClusterName
-      Namespace: mlrun
-      Manifest: !Sub |
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: ml-pipeline-ui
-          namespace: mlrun
-          annotations:
-            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
-
-  MLPipelineSA:
-    Type: "AWSQS::Kubernetes::Resource"
-    DependsOn: MLRunNamespace
-    Properties:
-      ClusterName: !Ref EKSClusterName
-      Namespace: mlrun
-      Manifest: !Sub |
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: ml-pipeline
-          namespace: mlrun
-          annotations:
-            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
-
-  ArgoSA:
-    Type: "AWSQS::Kubernetes::Resource"
-    DependsOn: MLRunNamespace
-    Properties:
-      ClusterName: !Ref EKSClusterName
-      Namespace: mlrun
-      Manifest: !Sub |
-        apiVersion: v1
-        kind: ServiceAccount
-        metadata:
-          name: argo
-          namespace: mlrun
-          annotations:
-            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
-
-  ContainerRegistrySecret:
-    Type: "AWSQS::Kubernetes::Resource"
-    DependsOn: MLRunNamespace
-    Properties:
-      ClusterName: !Ref EKSClusterName
-      Namespace: mlrun
-      Manifest: !Sub |
-        apiVersion: v1
-        stringData:
-          .dockercfg: |
-            {"auths":
-              { "https://${RegistryDomainName}${RegistrySuffix}":
-                {"username": "${RegistryUsername}",
-                 "password": "${RegistryPassword}",
-                 "email": "${RegistryEmail}"
-                }
-              }
-            }
-        kind: Secret
-        metadata:
-          name: registry-credentials
-          namespace: mlrun
-          selfLink: /api/v1/namespaces/mlrun/secrets/registry-credentials
-        type: kubernetes.io/dockercfg
-
   MLRunHelmChart:
     Type: "AWSQS::Kubernetes::Helm"
     DependsOn: 
       - MLRunNamespace
-      - ContainerRegistrySecret
     Properties:
       ClusterID: !Ref EKSClusterName
       Name: mlrun-kit
-      Chart: mlrun-kit
+      Chart: mlrun-ce
       Namespace: mlrun
-      Version: !Ref MLrunKitVersion
-      Repository: https://v3io.github.io/helm-charts/stable
+      TimeOut: 14
+      Version: !Ref MLrunCeVersion
+      Repository: https://mlrun.github.io/ce
       ValueYaml: !Sub |
         global:
           registry:
-            url: "${RegistryDomainName}/${RegistryUsername}"
-            secretName: registry-credentials
+            url: "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com"
         nuclio:
+          platform:
+            kube:
+              defaultFunctionServiceAccount: mlrun-jobs-sa
+          registry: 
+            pushPullUrl: "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com"
           dashboard:
             containerBuilderKind: kaniko
         mlrun:
-          api:
-            extraEnv:
-            - name: MLRUN_SPARK_APP_IMAGE
-              value: gcr.io/iguazio/spark-app
-            - name: MLRUN_SPARK_APP_IMAGE_TAG
-              value: v3.2.1-mlk
-            - name: MLRUN_FUNCTION__SPEC__SERVICE_ACCOUNT__DEFAULT
-              value: mlrun-jobs-sa
-            - name: S3_NON_ANONYMOUS
-              value: "true"
-            - name: MLRUN_ARTIFACT_PATH
-              value: s3://${EKSClusterName}
-            extraInitContainers:
-            - name: secret-converter
-              image: gcr.io/iguazio/secret-converter:0.0.1
-              imagePullPolicy: IfNotPresent
           nuclio:
-            uiURL: "https://nuclio.${EKSClusterName}.${ClusterDomain}"
+            uiURL:  "https://nuclio.${EKSClusterName}.${ClusterDomain}"
+          storage: filesystem
+          api:
+            fullnameOverride: mlrun-api
+            persistence:
+              enabled: true
+              annotations: ~
+            extraEnv:
+              - name: MLRUN_SPARK_OPERATOR_VERSION
+                value: spark-3        
+              - name: MLRUN_STORAGE__AUTO_MOUNT_TYPE
+                value: s3
+              - name: MLRUN_STORAGE__AUTO_MOUNT_PARAMS
+                value: "non_anonymous=True"
+              - name: MLRUN_FUNCTION__SPEC__SERVICE_ACCOUNT__DEFAULT
+                value: mlrun-jobs-sa
+              - name: MLRUN_HTTPDB__PROJECTS__FOLLOWERS
+                value: nuclio
+              - name: MLRUN_HTTPDB__REAL_PATH
+                value: s3://
+              - name: MLRUN_ARTIFACT_PATH
+                value: s3://mlrun-${EKSClusterName}/
+              - name: MLRUN_SPARK_APP_IMAGE
+                value: gcr.io/iguazio/spark-app
+              - name: MLRUN_SPARK_APP_IMAGE_TAG
+                value: v3.2.1-mlk
+              - name: MLRUN_KFP_URL
+                value: http://ml-pipeline.mlrun.svc.cluster.local:8888
+          db:
+            persistence:
+              enabled: true
+              annotations: ~
+          httpDB:
+            dbType: mysql
+            dsn: mysql+pymysql://root@mlrun-db:3306/mlrun
+            oldDsn: sqlite:////mlrun/db/mlrun.db?check_same_thread=false
+
+        jupyterNotebook:
+          awsInstall: true
+          serviceAccount: mlrun-jobs-sa
+          mlrunUIURL:  https://mlrun.${EKSClusterName}.${ClusterDomain}/mlrun
+          persistence:
+            enabled: true
+            annotations: ~
+          extraEnv:
+              - name: S3_NON_ANONYMOUS
+                value: "true"
+              - name: MLRUN_HTTPDB__REAL_PATH
+                value: s3://
+              - name: MLRUN_STORAGE__AUTO_MOUNT_TYPE
+                value: s3
+              - name: MLRUN_STORAGE__AUTO_MOUNT_PARAMS
+                value: "non_anonymous=True"
+              - name: MLRUN_FUNCTION__SPEC__SERVICE_ACCOUNT__DEFAULT
+                value: mlrun-jobs-sa
+              - name: MLRUN_ARTIFACT_PATH
+                value: s3://mlrun-${EKSClusterName}/
+              - name: MLRUN_CE
+                value: "true"
+
+        minio:
+          enabled: true
+          rootUser: minio
+          rootPassword: minio123
+          mode: distributed
+          replicas: 4
+          resources:
+            requests:
+              memory: 0.5Gi
+          persistence:
+            enabled: true
+            size: 1Gi
+          buckets: []
+          users: []
+        spark-operator:
+          enabled: true
+          fullnameOverride: spark-operator
+          webhook:
+             enable: true
+
+        pipelines:
+          enabled: true
+          name: pipelines
+          persistence:
+            enabled: true
+            existingClaim:
+            storageClass:
+            accessMode: "ReadWriteOnce"
+            size: "20Gi"
+            annotations: ~
+          db:
+            username: root
+          minio:
+            enabled: true
+            accessKey: "minio"
+            secretKey: "minio123"
+            endpoint: "minio.mlrun.svc.cluster.local"
+            endpointPort: "9000"
+            bucket: "mlrun"
+          images:
+            argoexec:
+              repository: gcr.io/ml-pipeline/argoexec
+              tag: v3.3.8-license-compliance
+            workflowController:
+              repository: gcr.io/ml-pipeline/workflow-controller
+              tag: v3.3.8-license-compliance
+            apiServer:
+              repository: gcr.io/ml-pipeline/api-server
+              tag: 1.8.3
+            persistenceagent:
+              repository: gcr.io/ml-pipeline/persistenceagent
+              tag: 1.8.3
+            scheduledworkflow:
+              repository: gcr.io/ml-pipeline/scheduledworkflow
+              tag: 1.8.3
+            ui:
+              repository: gcr.io/ml-pipeline/frontend
+              tag: 1.8.3
+            viewerCrdController:
+              repository: gcr.io/ml-pipeline/viewer-crd-controller
+              tag: 1.8.3
+            visualizationServer:
+              repository: gcr.io/ml-pipeline/visualization-server
+              tag: 1.8.3
+            metadata:
+              container:
+                repository: gcr.io/tfx-oss-public/ml_metadata_store_server
+                tag: 1.5.0
+            metadataEnvoy:
+              repository: gcr.io/ml-pipeline/metadata-envoy
+              tag: 1.8.3
+            metadataWriter:
+              repository: gcr.io/ml-pipeline/metadata-writer
+              tag: 1.8.3
+            mysql:
+              repository: mysql
+              tag: 5.7-debian
+            cacheImage:
+              repository: gcr.io/google-containers/busybox
+              tag: latest
+
+        kube-prometheus-stack:
+          fullnameOverride: monitoring
+          enabled: true
+          alertmanager:
+            enabled: false
+          grafana:
+            grafana.ini:
+              auth.anonymous:
+                enabled: true
+                org_role: Editor
+              security:
+                disable_initial_admin_creation: true
+            fullnameOverride: grafana
+            enabled: true
+            service:
+              type: NodePort
+              nodePort: 30110
+          prometheus:
+            enabled: true
+          kube-state-metrics:
+            fullnameOverride: state-metrics
+          prometheus-node-exporter:
+            fullnameOverride: node-exporter
 
   MLRunIngress:
     Type: "AWSQS::Kubernetes::Resource"
@@ -401,6 +479,8 @@ Outputs:
     Value: !Sub https://nuclio.${EKSClusterName}.${ClusterDomain}
   JupyterNotebook:
     Value: !Sub https://jupyter.${EKSClusterName}.${ClusterDomain}
+#  Pipeliens:
+#    Value: !Sub https://pipelines.${EKSClusterName}.${ClusterDomain}
   KubeConfig:
     Description: Run this command in your terminal to get access to your EKS cluster
     Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}
