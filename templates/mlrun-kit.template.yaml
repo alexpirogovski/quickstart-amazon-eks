@@ -20,7 +20,7 @@ Parameters:
     Type: String
   ClusterDomain:
     Description: Cluster DNS name will be created in this domain
-    Default: iguazio-devinteg.com
+    Default: replace-me.com
     Type: String
 
   OIDCProvider:
@@ -35,7 +35,7 @@ Mappings:
 Resources:
   MlrunBucket:
     Type: 'AWS::S3::Bucket'
-    DeletionPolicy: Delete
+    DeletionPolicy: Retain
     Properties:
       BucketName: !Sub mlrun-${EKSClusterName}
       AccessControl: BucketOwnerFullControl
@@ -479,8 +479,6 @@ Outputs:
     Value: !Sub https://nuclio.${EKSClusterName}.${ClusterDomain}
   JupyterNotebook:
     Value: !Sub https://jupyter.${EKSClusterName}.${ClusterDomain}
-#  Pipeliens:
-#    Value: !Sub https://pipelines.${EKSClusterName}.${ClusterDomain}
   KubeConfig:
     Description: Run this command in your terminal to get access to your EKS cluster
     Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}

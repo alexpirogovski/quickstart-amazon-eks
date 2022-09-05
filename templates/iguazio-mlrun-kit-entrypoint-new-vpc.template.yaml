@@ -91,11 +91,6 @@ Metadata:
           default: Iguazio MLRun configuration
         Parameters:
           - ClusterDomain
-      - Label:
-          default: Installtion MLRun options
-        Parameters:
-          - DeployMLRunCe
-          - MLrunCeVersion
     ParameterLabels:
       AvailabilityZones:
         default: Availability Zones
@@ -105,8 +100,6 @@ Metadata:
         default: Allowed external access CIDR
       NodeInstanceType:
         default: Instance type
-      NumberOfNodes:
-        default: Number of nodes
       MaxNumberOfNodes:
         default: Maximum number of nodes
       AdditionalEKSAdminUserArn:
@@ -117,18 +110,10 @@ Metadata:
         default: Provision bastion host
       EKSClusterName:
         default: EKS cluster name
-      NodeGroupType:
-        default: Node group type
-      NodeInstanceFamily:
-        default: Node instance family
       NodeGroupOS:
         default: Node group OS
       ClusterDomain:
         default: Route 53 hosted DNS domain
-      DeployMLRunCe:
-        default: Deploy MLRun CE
-      MLrunCeVersion:
-        default: MLRun CE Version
 Parameters:
   AvailabilityZones:
     Description: List of Availability Zones to use for the subnets in the VPC. The number of selected entries should match the value entered for Number of Availability Zones parameter.
@@ -174,14 +159,9 @@ Parameters:
     AllowedPattern: "[a-z0-9][a-z0-9-]{0,61}[a-z0-9]"
     Description: "Name for the EKS cluster."
     ConstraintDescription: Can contain lower-case letters, numbers and hyphens (a hyphen may not be the first or last character)."
-  NodeInstanceFamily:
-    Default: Standard
-    AllowedValues: ['Standard', 'GPU']
-    Type: String
-    Description: Choose the instance family to match the value of "Node instance type."
   ClusterDomain:
     Description: "The EKS cluster DNS record will be added to this domain."
-    Default: iguazio.com
+    Default: replace-me.com
     Type: String
     MinLength: 1
   DeployMLRunCe:
@@ -202,9 +182,6 @@ Mappings:
     KubernetesVersion: { Value: 1.22 }
     QSS3BucketName: { Value: mlk-alexp-122 }
 Conditions:
-  DeployNvidiaPlugin: !Equals 
-    - !Ref NodeInstanceFamily
-    - GPU
   DeployMLRunStack: !Equals
     - !Ref DeployMLRunCe
     - yes
@@ -248,21 +225,9 @@ Resources:
         ProvisionBastionHost: !Ref ProvisionBastionHost
         ALBIngressController: !FindInMap [Config, ALBIngressController, Value]
         EKSClusterName: !Ref EKSClusterName
-        NodeInstanceFamily: !Ref NodeInstanceFamily
+        NodeInstanceFamily: Standard
         NodeGroupType: !FindInMap [ Config, NodeGroupType, Value ]
         ClusterAutoScaler: Enabled
-  NvidiaDevicePlugin:
-    Type: AWS::CloudFormation::Stack
-    Condition: DeployNvidiaPlugin
-    DependsOn: EKSNewVPC
-    Properties:
-      TemplateURL: !Sub
-        - 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/nvidia-device-plugin.template.yaml'
-        - QSS3BucketName: !FindInMap [ Config, QSS3BucketName, Value ]
-          QSS3BucketRegion: !FindInMap [ Config, QSS3BucketRegion, Value ]
-          QSS3KeyPrefix: !FindInMap [ Config, QSS3KeyPrefix, Value ]
-      Parameters:
-        EKSClusterName: !Ref EKSClusterName
   MLRunKit:
     Type: AWS::CloudFormation::Stack
     Condition: DeployMLRunStack
