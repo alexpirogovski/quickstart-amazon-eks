@@ -8,12 +8,15 @@ Metadata:
         Parameters:
           - EKSClusterName
           - ClusterDomain
+          - REDISUrl
 
     ParameterLabels:
       EKSClusterName:
         default: EKS Cluster to deploy MLRun Kit
       ClusterDomain:
         default: DNS Domain
+      REDISUrl:
+        default: REDIS URL
 
 Parameters:
   EKSClusterName:
@@ -22,7 +25,10 @@ Parameters:
     Description: Cluster DNS name will be created in this domain
     Default: replace-me.com
     Type: String
-
+  REDISUrl:
+    Description: The URL of the REDIS DB
+    Default: redis-replace-me.com
+    Type: String
   OIDCProvider:
     Type: String
   MLrunCeVersion:
@@ -37,7 +43,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     Properties:
-      BucketName: !Sub mlrun-${EKSClusterName}
+      BucketName: !Sub mlrun-${EKSClusterName}-${AWS::StackName}
       AccessControl: BucketOwnerFullControl
       PublicAccessBlockConfiguration:
         BlockPublicAcls: yes
@@ -81,7 +87,7 @@ Resources:
 
   MLRunNamespace:
     Type: "AWSQS::Kubernetes::Resource"
-    DeletionPolicy: Retain
+    DeletionPolicy: Delete
     Properties:
       ClusterName: !Ref EKSClusterName
       Namespace: mlrun
@@ -241,13 +247,15 @@ Resources:
               - name: MLRUN_HTTPDB__REAL_PATH
                 value: s3://
               - name: MLRUN_ARTIFACT_PATH
-                value: s3://mlrun-${EKSClusterName}/
+                value: s3://mlrun-${EKSClusterName}-${AWS::StackName}/
               - name: MLRUN_SPARK_APP_IMAGE
                 value: gcr.io/iguazio/spark-app
               - name: MLRUN_SPARK_APP_IMAGE_TAG
                 value: v3.2.1-mlk
               - name: MLRUN_KFP_URL
                 value: http://ml-pipeline.mlrun.svc.cluster.local:8888
+              - name: MLRUN_REDIS_URL
+                value: ${REDISUrl}
           db:
             persistence:
               enabled: true
@@ -276,7 +284,7 @@ Resources:
               - name: MLRUN_FUNCTION__SPEC__SERVICE_ACCOUNT__DEFAULT
                 value: mlrun-jobs-sa
               - name: MLRUN_ARTIFACT_PATH
-                value: s3://mlrun-${EKSClusterName}/
+                value: s3://mlrun-${EKSClusterName}${AWS::StackName}/
               - name: MLRUN_CE
                 value: "true"
 
