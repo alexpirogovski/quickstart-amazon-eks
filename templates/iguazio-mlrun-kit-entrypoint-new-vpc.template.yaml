@@ -248,7 +248,7 @@ Resources:
         EKSClusterName: !Ref EKSClusterName
         ClusterDomain: !Ref ClusterDomain
         MLrunCeVersion: !Ref MLrunCeVersion
-        REDISUrl: !REDISUrl
+        REDISUrl: !Ref REDISUrl
         OIDCProvider: !Join [ '', !Split [ 'https://', !GetAtt EKSNewVPC.Outputs.OIDCIssuerURL ] ]
 Outputs:
   BastionIP:
