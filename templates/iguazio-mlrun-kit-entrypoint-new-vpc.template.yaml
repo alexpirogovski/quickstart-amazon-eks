@@ -116,7 +116,7 @@ Metadata:
       ClusterDomain:
         default: Route 53 hosted DNS domain
       REDISUrl:
-        deefault: Thee URL of your REDIS database
+        default: The URL of your REDIS database
 Parameters:
   AvailabilityZones:
     Description: List of Availability Zones to use for the subnets in the VPC. The number of selected entries should match the value entered for Number of Availability Zones parameter.
