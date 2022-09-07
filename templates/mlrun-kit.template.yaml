@@ -9,6 +9,7 @@ Metadata:
           - EKSClusterName
           - ClusterDomain
           - REDISUrl
+          - MLRunFuncSA
 
     ParameterLabels:
       EKSClusterName:
@@ -17,6 +18,8 @@ Metadata:
         default: DNS Domain
       REDISUrl:
         default: REDIS URL
+      MLRunFuncSA:
+        default: Default function service account
 
 Parameters:
   EKSClusterName:
@@ -29,6 +32,9 @@ Parameters:
     Description: The URL of the REDIS DB
     Default: redis-replace-me.com
     Type: String
+  MLRunFuncSA:
+    Type: String
+    Default: default-func-sa
   OIDCProvider:
     Type: String
   MLrunCeVersion:
@@ -196,6 +202,21 @@ Resources:
         kind: ServiceAccount
         metadata:
           name: mlrun-jobs-sa
+          namespace: mlrun
+          annotations:
+            eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
+
+  MLRunFuncSA:
+    Type: "AWSQS::Kubernetes::Resource"
+    DependsOn: MLRunNamespace
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      Namespace: mlrun
+      Manifest: !Sub |
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: ${MLRunFuncSA}
           namespace: mlrun
           annotations:
             eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
