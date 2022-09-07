@@ -481,7 +481,7 @@ Resources:
 
 Outputs:
   MLRunUI:
-    Value: !Sub https://mlrun.${EKSClusterName}.${ClusterDomain}/mlrun
+    Value: !Sub https://mlrun.${EKSClusterName}.${ClusterDomain}
   MLRunAPI:
     Value: !Sub https://mlrun-api.${EKSClusterName}.${ClusterDomain}
   Nuclio: 
