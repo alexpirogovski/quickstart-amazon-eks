@@ -43,7 +43,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     DeletionPolicy: Retain
     Properties:
-      BucketName: !Sub mlrun-${EKSClusterName}-${AWS::StackName}
+      BucketName: !Sub mlrun-${EKSClusterName}
       AccessControl: BucketOwnerFullControl
       PublicAccessBlockConfiguration:
         BlockPublicAcls: yes
@@ -224,6 +224,7 @@ Resources:
             pushPullUrl: "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com"
           dashboard:
             containerBuilderKind: kaniko
+            imageNamePrefixTemplate: "${EKSClusterName}-{{ .ProjectName }}-{{ .FunctionName }}-"
         mlrun:
           nuclio:
             uiURL:  "https://nuclio.${EKSClusterName}.${ClusterDomain}"
@@ -235,7 +236,7 @@ Resources:
               annotations: ~
             extraEnv:
               - name: MLRUN_SPARK_OPERATOR_VERSION
-                value: spark-3        
+                value: spark-3
               - name: MLRUN_STORAGE__AUTO_MOUNT_TYPE
                 value: s3
               - name: MLRUN_STORAGE__AUTO_MOUNT_PARAMS
@@ -247,7 +248,7 @@ Resources:
               - name: MLRUN_HTTPDB__REAL_PATH
                 value: s3://
               - name: MLRUN_ARTIFACT_PATH
-                value: s3://mlrun-${EKSClusterName}-${AWS::StackName}/
+                value: s3://mlrun-${EKSClusterName}/
               - name: MLRUN_SPARK_APP_IMAGE
                 value: gcr.io/iguazio/spark-app
               - name: MLRUN_SPARK_APP_IMAGE_TAG
@@ -284,7 +285,7 @@ Resources:
               - name: MLRUN_FUNCTION__SPEC__SERVICE_ACCOUNT__DEFAULT
                 value: mlrun-jobs-sa
               - name: MLRUN_ARTIFACT_PATH
-                value: s3://mlrun-${EKSClusterName}${AWS::StackName}/
+                value: s3://mlrun-${EKSClusterName}/
               - name: MLRUN_CE
                 value: "true"
 
