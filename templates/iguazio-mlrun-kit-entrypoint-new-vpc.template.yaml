@@ -117,6 +117,7 @@ Metadata:
         default: Route 53 hosted DNS domain
       REDISUrl:
         default: The URL of your REDIS database
+
 Parameters:
   AvailabilityZones:
     Description: List of Availability Zones to use for the subnets in the VPC. The number of selected entries should match the value entered for Number of Availability Zones parameter.
@@ -167,17 +168,13 @@ Parameters:
     Default: replace-me.com
     Type: String
     MinLength: 1
-  DeployMLRunCe:
-    Description: Deploy MLRun CE
-    Default: yes
-    Type: String
-    AllowedValues: [yes, no]
   MLrunCeVersion:
     Type: String
-    Default: "0.0.9"
+    Default: "0.0.13"
   REDISUrl:
     Type: String
     Default: redis-replace-me.com
+
 Mappings:
   Config:
     QSS3KeyPrefix: { Value: quickstart-amazon-eks/ }
@@ -187,10 +184,6 @@ Mappings:
     NodeGroupType: { Value: Managed }
     KubernetesVersion: { Value: 1.22 }
     QSS3BucketName: { Value: mlk-alexp-122 }
-Conditions:
-  DeployMLRunStack: !Equals
-    - !Ref DeployMLRunCe
-    - yes
 Resources:
   AdvancedConfigDefaultsStack:
     Type: AWS::CloudFormation::Stack
@@ -236,7 +229,6 @@ Resources:
         ClusterAutoScaler: Enabled
   MLRunKit:
     Type: AWS::CloudFormation::Stack
-    Condition: DeployMLRunStack
     DependsOn: EKSNewVPC
     Properties:
       TemplateURL: !Sub
@@ -261,18 +253,9 @@ Outputs:
     Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}
   JupyterNotebook:
     Value: !GetAtt MLRunKit.Outputs.JupyterNotebook
-    Condition: DeployMLRunStack
   MLRunUI:
     Value: !GetAtt MLRunKit.Outputs.MLRunUI
-    Condition: DeployMLRunStack
   MLRunAPI:
     Value: !GetAtt MLRunKit.Outputs.MLRunAPI
-    Condition: DeployMLRunStack
   Nuclio:
     Value: !GetAtt MLRunKit.Outputs.Nuclio
-    Condition: DeployMLRunStack
-#  Pipeliens:
-#    Value: !GetAtt MLRunKit.Outputs.Pipeliens
-#    Condition: DeployMLRunStack
-
-
