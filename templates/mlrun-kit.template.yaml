@@ -200,13 +200,37 @@ Resources:
           annotations:
             eks.amazonaws.com/role-arn: ${AWSAccessRole.Arn}
 
+  SparkRB:
+    Type: "AWSQS::Kubernetes::Resource"
+    DependsOn: MLRunNamespace
+    Properties:
+      ClusterName: !Ref EKSClusterName
+      Namespace: mlrun
+      Manifest: !Sub |
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: RoleBinding
+        metadata:
+          labels:
+            app.kubernetes.io/name: spark-operator
+            app.kubernetes.io/version: v1beta2-1.3.7-3.1.1
+          name: spark-cfn
+          namespace: mlrun
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: Role
+          name: spark-role
+        subjects:
+        - kind: ServiceAccount
+          name: mlrun-jobs-sa
+          namespace: mlrun
+
   MLRunHelmChart:
     Type: "AWSQS::Kubernetes::Helm"
     DependsOn: 
       - MLRunNamespace
     Properties:
       ClusterID: !Ref EKSClusterName
-      Name: mlrun-kit
+      Name: mlrun-ce
       Chart: mlrun-ce
       Namespace: mlrun
       TimeOut: 14
@@ -456,7 +480,16 @@ Resources:
                       number: 8888
                 path: /*
                 pathType: ImplementationSpecific
-
+          - host: grafana.${EKSClusterName}.${ClusterDomain}
+            http:
+              paths:
+              - backend:
+                  service:
+                    name: grafana
+                    port:
+                      number: 80
+                path: /*
+                pathType: ImplementationSpecific
   MLRunIngressHostname:
     Type: "AWSQS::Kubernetes::Get"
     DependsOn: MLRunIngress
