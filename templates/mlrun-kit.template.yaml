@@ -521,6 +521,8 @@ Outputs:
     Value: !Sub https://nuclio.${EKSClusterName}.${ClusterDomain}
   JupyterNotebook:
     Value: !Sub https://jupyter.${EKSClusterName}.${ClusterDomain}
+  Grafana:
+    Value: !Sub https://grafana.${EKSClusterName}.${ClusterDomain}
   KubeConfig:
     Description: Run this command in your terminal to get access to your EKS cluster
     Value: !Sub aws eks update-kubeconfig --name=${EKSClusterName}
