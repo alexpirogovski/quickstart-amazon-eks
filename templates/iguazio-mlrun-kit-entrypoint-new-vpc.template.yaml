@@ -144,7 +144,7 @@ Parameters:
     Type: String
   MaxNumberOfNodes:
     Default: 1
-    Description: By default the system is deployed with a single  node , and can scale to  Max Number of Nodes . The default is one for each of the three Availability Zones.
+    Description: By default the system is deployed with a single node and can scale to Max Number of Nodes.
     Type: Number
   NumberOfAZs:
     Type: String
