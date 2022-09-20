@@ -227,6 +227,7 @@ Resources:
         NodeInstanceFamily: Standard
         NodeGroupType: !FindInMap [ Config, NodeGroupType, Value ]
         ClusterAutoScaler: Enabled
+        EfsStorageClass: Enabled
   MLRunKit:
     Type: AWS::CloudFormation::Stack
     DependsOn: EKSNewVPC
