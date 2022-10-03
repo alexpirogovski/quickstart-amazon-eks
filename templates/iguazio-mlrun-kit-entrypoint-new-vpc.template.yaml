@@ -170,7 +170,7 @@ Parameters:
     MinLength: 1
   MLrunCeVersion:
     Type: String
-    Default: "0.0.19"
+    Default: "0.0.20"
   REDISUrl:
     Type: String
     Default: redis-replace-me.com
