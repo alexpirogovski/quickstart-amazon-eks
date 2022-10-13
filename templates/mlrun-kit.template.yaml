@@ -258,6 +258,7 @@ Resources:
             persistence:
               enabled: true
               annotations: ~
+              storageClass: aws-efs
             extraEnv:
               - name: MLRUN_SPARK_OPERATOR_VERSION
                 value: spark-3
@@ -285,6 +286,7 @@ Resources:
             persistence:
               enabled: true
               annotations: ~
+              storageClass: aws-efs
           httpDB:
             dbType: mysql
             dsn: mysql+pymysql://root@mlrun-db:3306/mlrun
@@ -297,6 +299,7 @@ Resources:
           persistence:
             enabled: true
             annotations: ~
+            storageClass: aws-efs
           extraEnv:
               - name: S3_NON_ANONYMOUS
                 value: "true"
@@ -324,6 +327,7 @@ Resources:
               memory: 0.5Gi
           persistence:
             enabled: true
+            storageClass: aws-efs
             size: 1Gi
           buckets: []
           users: []
@@ -339,7 +343,7 @@ Resources:
           persistence:
             enabled: true
             existingClaim:
-            storageClass:
+            storageClass: aws-efs
             accessMode: "ReadWriteOnce"
             size: "20Gi"
             annotations: ~
