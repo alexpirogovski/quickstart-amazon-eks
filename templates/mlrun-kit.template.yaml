@@ -404,6 +404,11 @@ Resources:
           alertmanager:
             enabled: false
           grafana:
+            persistence:
+              type: pvc
+              enabled: true
+              size: 10Gi
+              storageClassName: aws-efs
             grafana.ini:
               auth.anonymous:
                 enabled: true
